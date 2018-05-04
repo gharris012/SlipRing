@@ -2,11 +2,15 @@
 include("common.jscad");
 include("screws.jscad");
 
-const ringOD = 14.10;
-const ringID = 8.15;
+// 13.9 - little too loose
+// 14.25 - too tight to assemble without pliers, but good hold
+const ringOD = 14.20; 
+// 8.20 - slightly too loose
+const ringID = 8.10;
 const ringWidth = 10;
 
 const ringSlotDia = 12;
+const ringSlotDepth = 1.5;
 
 const ringToolOD = ringOD + 4;
 const ringToolID = ringID + 1.5;
@@ -95,19 +99,20 @@ function slip()
 
 
   // reference dimensions (from motor)
-  // shaft diameter (from motor) : 2.35
+  // shaft diameter (commutator, from motor) : 5.75
   // distance between brush mounts: 18
-  // distance between mount and shaft: 15.65
+  // distance between mount and shaft: 12.25
   //
   // new dimensions
   // ring dia: 16
-  // distance between mounts: 31.65
+
+  // distance between mounts: 28.25
   // 
 
-  const brushSpacing = 31.65;
+  const brushSpacing = 28.5;
   const slipRefDia = brushSpacing + brushMountDia + brushContactY;
   const slipRefZ = 5;
-  const ringRefDia = 16;
+  const ringRefDia = 16 + 1;
 
   let slipRef = CSG.cylinder({
     start: [0,0,0],
@@ -141,7 +146,7 @@ function ring()
   });
   ringBody = ringBody.subtract(innerRing);
   const ringSlot = CSG.cylinder({
-    start: [0,0, ringWidth - 3],
+    start: [0,0, ringWidth - ringSlotDepth],
     end:   [0,0, ringWidth + tol],
     radius: ringSlotDia / 2
   });
