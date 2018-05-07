@@ -13,7 +13,7 @@ const ringSlotDia = 12;
 const ringSlotDepth = 1.5;
 
 const ringToolOD = ringOD + 4;
-const ringToolID = ringID + 1.5;
+const ringToolID = ringID + 3;
 const ringToolLength = 55;
 
 const spacerOD = ringOD + 2;
@@ -69,9 +69,9 @@ function slip()
   const brushMountDia = 5;
   const brushMountBackX = 5;
   const brushMountBackY = 2.5;
-  const brushMountZ = 5.5;
-  const brushContactX = 3;
-  const brushContactY = 0.6;
+  const brushMountZ = 7;
+  const brushContactX = 3.5;  // 3x0.6
+  const brushContactY = 1.0;
   const brushMountHoleDia = 2;
 
   let brushMount = CSG.cylinder({
@@ -87,7 +87,7 @@ function slip()
   let brushMountBack = CSG.roundedCube({
     center: [0, 0, brushMountZ/2],
     radius: [brushMountBackX/2, brushMountBackY/2, brushMountZ/2],
-    roundradius: 0 // prod: 1 ; test: 0
+    roundradius: 0
   }).translate([0, -brushMountDia/2, 0]);
   
   brushMount = brushMount.subtract(brushMountBack);
@@ -109,25 +109,87 @@ function slip()
   // distance between mounts: 28.25
   // 
 
-  const brushSpacing = 28.5;
-  const slipRefDia = brushSpacing + brushMountDia + brushContactY;
-  const slipRefZ = 5;
+  const brushSpacing = 27;
+  const slipDia = brushSpacing + brushMountDia;
+  const slipRefDia = slipDia + brushContactY;
+  const slipRefZ = 1;
   const ringRefDia = 16 + 1;
+  const bearingDia = 22;
+  const bearingZ = 7;
+  const slipWallDia = slipRefDia + 3;
+
+  const brushContactZ = brushMountZ;
+  let brushContact = CSG.roundedCube({
+    center: [0, 0, brushContactZ/2],
+    radius: [brushContactX/2, brushContactY/2, brushContactZ/2],
+    roundradius: 0
+  });
+ 
+  const brushContactUpperX = 6;
+  const brushContactUpperY = brushContactY;
+  const brushContactUpperZ = 5;
+  let brushContactUpper = CSG.roundedCube({
+    center: [0, 0, brushContactUpperZ/2],
+    radius: [brushContactUpperX/2, brushContactUpperY/2, brushContactUpperZ/2],
+    roundradius: 0
+  })
+  .translate([-(brushContactX-brushContactUpperX)/2,0,brushContactZ-brushContactUpperZ]);
+ 
+  const brushContactLowerZ = brushMountZ + 1;
+  const brushContactLowerY = slipWallDia - slipRefDia;
+  let brushContactLower = CSG.roundedCube({
+    center: [0, -brushContactLowerY/2, -brushContactLowerZ/2],
+    radius: [brushContactX/2, brushContactLowerY/2, brushContactLowerZ/2],
+    roundradius: 0
+  });
+  brushContact = brushContact.union(brushContactLower).union(brushContactUpper);
+
+  let bearingMount = CSG.cylinder({
+    start: [0,0,0],
+    end:   [0,0, -bearingZ],
+    radius: ( slipDia ) / 2
+  });
+  const bearingHole = CSG.cylinder({
+    start: [0,0,0],
+    end:   [0,0, -bearingZ],
+    radius: ( bearingDia ) / 2
+  });
+  bearingMount = bearingMount.subtract(bearingHole);
+  output.push(bearingMount);
+
+  let slipWall = CSG.cylinder({
+    start: [0,0,0],
+    end:   [0,0, brushMountZ + slipRefZ],
+    radius: ( slipWallDia ) / 2
+  });
+  let slipWallHole = CSG.cylinder({
+    start: [0,0,0],
+    end:   [0,0, brushMountZ + slipRefZ],
+    radius: ( slipRefDia ) / 2
+  });
+  slipWall = slipWall.subtract(slipWallHole);
+  output.push(slipWall);
 
   let slipRef = CSG.cylinder({
     start: [0,0,0],
     end:   [0,0, slipRefZ],
     radius: ( slipRefDia ) / 2
   });
+
   let ringRef = CSG.cylinder({
     start: [0,0,0],
     end:   [0,0, slipRefZ],
-    radius: ( ringRefDia ) / 2
+    radius: ( ringID + 1 ) / 2 // axle size without touching
   });
   output.push(slipRef.subtract(ringRef));
   output.push(brushMount.rotateZ(180).translate([0, brushSpacing/2, slipRefZ]));
   output.push(brushMount.translate([0, -brushSpacing/2, slipRefZ]));
-  output = [ union(output) ];
+  let slipBody = union(output);
+  slipBody = slipBody.subtract(brushContact.translate([0, -((brushSpacing/2) + (brushMountDia/2)), slipRefZ]));
+  slipBody = slipBody.subtract(brushContact.rotateZ(180).translate([0, ((brushSpacing/2) + (brushMountDia/2)), slipRefZ]));
+
+  output = [ slipBody ];
+
   return output;
 }
 
