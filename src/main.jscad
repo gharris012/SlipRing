@@ -2,10 +2,11 @@
 include("common.jscad");
 include("screws.jscad");
 
-// 13.9 - little too loose
-// 14.25 - too tight to assemble without pliers, but good hold
-const ringOD = 14.20; 
-// 8.20 - slightly too loose
+// 13.9 - a little loose, use for fit testing the rest
+// 14.20 - 'prod'
+const ringOD = 13.9; 
+// 8.10 - a little loose, use for fit testing the rest
+// 8.00 - 'prod'
 const ringID = 8.10;
 const ringWidth = 10;
 
@@ -30,11 +31,14 @@ function getParameterDefinitions()
     { name: 'showReferences', type: 'choice', values: ["yes", "no"], initial: "no", caption: "Show References?" },
     { name: 'type', type: 'choice', values: 
         [
-          "ring", 
+          "ring",
+          "washer", 
           "spacer", 
           "ring w/spacer", 
           "ring tool",
-          "slip"
+          "slip",
+          "slip w/bearing",
+          "end"
         ], 
         initial: "slip", caption: "Type" }
   ];
@@ -49,9 +53,23 @@ function main(params)
       output.push(makeAxis());
   }
 
-  if ( params.type === 'slip' )
+  if ( params.type === 'slip' || params.type === 'slip w/bearing' || params.type === 'end' )
   {
     output = output.concat(slip());
+  }
+  else if ( params.type === 'washer' )
+  {
+    const washer = CSG.cylinder({
+      start: [0,0, 0],
+      end:   [0,0, spacerThickness],
+      radius: ( ( ringID + ( tol * 2 ) ) / 2 ) + 1
+    });
+    const washerHole = CSG.cylinder({
+      start: [0,0, 0],
+      end:   [0,0, spacerThickness],
+      radius: ( ringID + ( tol * 2 ) ) / 2
+    });
+    output = washer.subtract(washerHole);
   }
   else
   {
@@ -112,7 +130,8 @@ function slip()
   const brushSpacing = 27;
   const slipDia = brushSpacing + brushMountDia;
   const slipRefDia = slipDia + brushContactY;
-  const slipRefZ = 1;
+  let slipRefZ = spacerThickness;
+  let slipZ = ringWidth;
   const ringRefDia = 16 + 1;
   const bearingDia = 22;
   const bearingZ = 7;
@@ -127,13 +146,13 @@ function slip()
  
   const brushContactUpperX = 6;
   const brushContactUpperY = brushContactY;
-  const brushContactUpperZ = 5;
+  const brushContactUpperZ = slipZ;
   let brushContactUpper = CSG.roundedCube({
     center: [0, 0, brushContactUpperZ/2],
     radius: [brushContactUpperX/2, brushContactUpperY/2, brushContactUpperZ/2],
     roundradius: 0
   })
-  .translate([-(brushContactX-brushContactUpperX)/2,0,brushContactZ-brushContactUpperZ]);
+  .translate([-(brushContactX-brushContactUpperX)/2,0,0]);
  
   const brushContactLowerZ = brushMountZ + 1;
   const brushContactLowerY = slipWallDia - slipRefDia;
@@ -147,28 +166,56 @@ function slip()
   let bearingMount = CSG.cylinder({
     start: [0,0,0],
     end:   [0,0, -bearingZ],
-    radius: ( slipDia ) / 2
+    radius: ( bearingDia + 1 + 4 ) / 2
   });
   const bearingHole = CSG.cylinder({
     start: [0,0,0],
     end:   [0,0, -bearingZ],
-    radius: ( bearingDia ) / 2
+    radius: ( bearingDia + 1 ) / 2
   });
   bearingMount = bearingMount.subtract(bearingHole);
-  output.push(bearingMount);
+  let bearingMountTab = makeMountTab().rotateZ(90).translate([((bearingDia + 1 + 4)/2) + 6.5, 0, -bearingZ]);
+  bearingMount = bearingMount.union(bearingMountTab.rotateZ(-45));
+  bearingMount = bearingMount.union(bearingMountTab.rotateZ(180-45));
+
+  if ( params.type === 'slip w/bearing' )
+  {
+    output.push(bearingMount);
+  }
+
+  if ( params.type === 'end' )
+  {
+    slipZ = 0;
+  }
 
   let slipWall = CSG.cylinder({
     start: [0,0,0],
-    end:   [0,0, brushMountZ + slipRefZ],
+    end:   [0,0, slipZ + slipRefZ],
     radius: ( slipWallDia ) / 2
   });
   let slipWallHole = CSG.cylinder({
     start: [0,0,0],
-    end:   [0,0, brushMountZ + slipRefZ],
+    end:   [0,0, slipZ + slipRefZ],
     radius: ( slipRefDia ) / 2
   });
   slipWall = slipWall.subtract(slipWallHole);
   output.push(slipWall);
+
+  let mountTab = makeMountTab();
+  let mountTabLow = mountTab.rotateZ(90).translate([(slipWallDia/2) + 3, 0, 0]);
+  mountTabHigh = mountTabLow.translate([0, 0, slipZ]).rotateZ(45);
+  mountTab = [ mountTabHigh, mountTabHigh.rotateZ(180) ];
+
+  if ( params.type !== 'slip w/bearing'
+        && params.type !== 'end' )
+  {
+    mountTab.push(mountTabLow);
+    mountTab.push(mountTabLow.rotateZ(180));
+  }
+  mountTab = union(mountTab);
+  mountTab = mountTab.subtract(slipWallHole);
+  
+  output.push(mountTab);
 
   let slipRef = CSG.cylinder({
     start: [0,0,0],
@@ -176,21 +223,62 @@ function slip()
     radius: ( slipRefDia ) / 2
   });
 
+  let slipAxleHoleDia = bearingDia;
+
+  if ( params.type === 'slip w/bearing' )
+  {
+    slipAxleHoleDia = bearingDia - 4;
+  }
+  else if ( params.type === 'end' )
+  {
+    slipAxleHoleDia = spacerOD + 3;
+  }
+
   let ringRef = CSG.cylinder({
     start: [0,0,0],
     end:   [0,0, slipRefZ],
-    radius: ( ringID + 1 ) / 2 // axle size without touching
+    radius: ( slipAxleHoleDia / 2 ) // axle size without touching
   });
   output.push(slipRef.subtract(ringRef));
-  output.push(brushMount.rotateZ(180).translate([0, brushSpacing/2, slipRefZ]));
-  output.push(brushMount.translate([0, -brushSpacing/2, slipRefZ]));
+  if ( params.type !== 'end' )
+  {
+    output.push(brushMount.translate([0, -brushSpacing/2, slipRefZ]));
+  }
   let slipBody = union(output);
-  slipBody = slipBody.subtract(brushContact.translate([0, -((brushSpacing/2) + (brushMountDia/2)), slipRefZ]));
-  slipBody = slipBody.subtract(brushContact.rotateZ(180).translate([0, ((brushSpacing/2) + (brushMountDia/2)), slipRefZ]));
-
+  if ( params.type !== 'end' )
+  {
+    slipBody = slipBody.subtract(brushContact.translate([0, -((brushSpacing/2) + (brushMountDia/2)), slipRefZ]));
+  }
   output = [ slipBody ];
-
+  
   return output;
+}
+
+function makeMountTab()
+{
+  const mountTabDia = 7;
+  const mountTabHoleDia = 3.25;
+  const mountTabZ = spacerThickness;
+
+  let mountTab = CSG.cylinder({
+    start: [0,0,0],
+    end:   [0,0, mountTabZ],
+    radius: ( mountTabDia ) / 2
+  });
+  let mountTabBack = CSG.roundedCube({
+    center: [0, 0, mountTabZ/2],
+    radius: [mountTabDia/2, mountTabDia/2, mountTabZ/2],
+    roundradius: 0
+  }).translate([0, mountTabDia/2, 0]);
+  mountTab = mountTab.union(mountTabBack);
+  let mountTabHole = CSG.cylinder({
+    start: [0,0,0],
+    end:   [0,0, mountTabZ],
+    radius: ( mountTabHoleDia ) / 2
+  });
+  mountTab = mountTab.subtract(mountTabHole);
+
+  return mountTab;
 }
 
 function ring()
@@ -198,18 +286,18 @@ function ring()
   let output = [];
   let ringBody = CSG.cylinder({
     start: [0,0,0],
-    end:   [0,0, ringWidth + tol],
+    end:   [0,0, ringWidth],
     radius: ( ringOD - tol ) / 2
   });
   const innerRing = CSG.cylinder({
     start: [0,0,-(spacerThickness)],
-    end:   [0,0, ringWidth + tol],
+    end:   [0,0, ringWidth],
     radius: ( ringID + tol ) / 2
   });
   ringBody = ringBody.subtract(innerRing);
   const ringSlot = CSG.cylinder({
     start: [0,0, ringWidth - ringSlotDepth],
-    end:   [0,0, ringWidth + tol],
+    end:   [0,0, ringWidth],
     radius: ringSlotDia / 2
   });
   ringBody = ringBody.subtract(ringSlot.translate([ringID / 2, ringID / 2, 0]));
@@ -217,7 +305,7 @@ function ring()
 
   const solderGroove = CSG.cylinder({
     start: [0,0,-(spacerThickness)],
-    end:   [0,0, ringWidth + tol],
+    end:   [0,0, ringWidth],
     radius: ( solderGrooveDia ) / 2
   });
   ringBody = ringBody.subtract(solderGroove.translate([( ringOD/2 ) + (1/2), 0, 0]));
@@ -225,7 +313,7 @@ function ring()
   
   const wireGroove = CSG.cylinder({
     start: [0,0,-(spacerThickness)],
-    end:   [0,0, ringWidth + tol],
+    end:   [0,0, ringWidth],
     radius: ( wireGrooveDia ) / 2
   });
   ringBody = ringBody.subtract(wireGroove.translate([0, -( ringID/2 ), 0]));
