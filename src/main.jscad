@@ -21,7 +21,7 @@ const spacerOD = ringOD + 2;
 const spacerThickness = 2;
 
 const solderGrooveDia = 5;
-const wireGrooveDia = 4;
+const wireGrooveDia = 5;
 
 const tol = 0.25;
 
@@ -203,14 +203,17 @@ function slip()
 
   let mountTab = makeMountTab();
   let mountTabLow = mountTab.rotateZ(90).translate([(slipWallDia/2) + 3, 0, 0]);
-  mountTabHigh = mountTabLow.translate([0, 0, slipZ]).rotateZ(45);
+  mountTabHigh = mountTabLow.translate([0, 0, slipZ]).rotateZ(0);
+  mountTabLow = mountTabLow.rotateZ(45);
   mountTab = [ mountTabHigh, mountTabHigh.rotateZ(180) ];
 
   if ( params.type !== 'slip w/bearing'
         && params.type !== 'end' )
   {
     mountTab.push(mountTabLow);
+    mountTab.push(mountTabLow.rotateZ(90));
     mountTab.push(mountTabLow.rotateZ(180));
+    mountTab.push(mountTabLow.rotateZ(270));
   }
   mountTab = union(mountTab);
   mountTab = mountTab.subtract(slipWallHole);
