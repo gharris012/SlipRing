@@ -6,6 +6,6 @@ I needed a slip ring to add neopixels to a prize wheel. I couldn't find one that
 
 While I think it should be easy enough to adapt to other sizes, it is fairly specific to the pipe, bearings, and brushes I could find.
 
-For more information and more pictures, go to <thingiverse>
+For more information and more pictures, go to https://www.thingiverse.com/thing:2927684
 
 Inspired by: https://www.thingiverse.com/thing:2164663
