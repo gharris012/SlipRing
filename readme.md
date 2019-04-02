@@ -9,3 +9,5 @@ While I think it should be easy enough to adapt to other sizes, it is fairly spe
 For more information and more pictures, go to https://www.thingiverse.com/thing:2927684
 
 Inspired by: https://www.thingiverse.com/thing:2164663
+
+To load the jscad script go to https://openjscad.org/ and drag-n-drop the `src/` directory to the file section in the lower left. Edit locally, click `Reload` button, rinse and repeat.

@@ -3,5 +3,3 @@ gcode/
 .libdircache
 build.cmd
 build.sh
-src/common.jscad
-src/screws.jscad
